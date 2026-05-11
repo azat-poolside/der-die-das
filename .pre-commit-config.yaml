@@ -1,0 +1,62 @@
+# ==========================================================================
+# Pre-commit Hooks Configuration for FastAPI Project
+# ==========================================================================
+
+repos:
+  # Standard pre-commit hooks
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v5.0.0
+    hooks:
+      - id: check-yaml
+        args: [--unsafe]
+      - id: end-of-file-fixer
+      - id: trailing-whitespace
+      - id: check-toml
+      - id: check-json
+      - id: check-added-large-files
+        args: [--maxkb=1000]
+      - id: check-merge-conflict
+      - id: check-case-conflict
+      - id: check-symlinks
+
+  # Ruff - Fast Python linter and formatter
+  # NOTE: ruff-format replaces black, and ruff lint with 'I' select replaces isort
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: v0.15.12
+    hooks:
+      - id: ruff
+        args: [--fix, --show-fixes]
+        types_or: [python, pyi]
+
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: v0.15.12
+    hooks:
+      - id: ruff-format
+        types_or: [python, pyi]
+
+  # MyPy - Static type checking
+  - repo: https://github.com/pre-commit/mirrors-mypy
+    rev: v1.15.0
+    hooks:
+      - id: mypy
+        additional_dependencies: [types-all]
+        args: [
+          --ignore-missing-imports,
+          --no-error-summary,
+          --show-error-codes,
+          --pretty,
+        ]
+        types: [file, python]
+        exclude: ^(tests/|test_)
+
+  # Bandit - Security linter
+  - repo: https://github.com/PyCQA/bandit
+    rev: 1.7.9
+    hooks:
+      - id: bandit
+        args: [--severity-level, "medium", --skip, "B101"]
+        types: [file, python]
+        exclude: ^(tests/|test_)
+
+# NOTE: Black and isort are handled by ruff (ruff-format and ruff lint with 'I' select).
+# Their configurations in pyproject.toml are kept for compatibility and IDE integration.
