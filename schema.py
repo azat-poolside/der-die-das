@@ -49,7 +49,6 @@ class SessionResultBase(BaseModel):
     quality_rating: int  # SM-2 quality rating (0-5)
     attempts: int
     response_time_ms: int
-    guessed_correctly: bool
 
 
 class SessionResultCreate(SessionResultBase):
@@ -78,7 +77,6 @@ class WordResult(BaseModel):
     quality_rating: int  # SM-2 quality rating (0-5)
     attempts: int
     response_time_ms: int
-    guessed_correctly: bool
 
 
 class SessionEndRequest(BaseModel):

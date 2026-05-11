@@ -70,8 +70,7 @@ async def create_session_result(
     session_id: str, 
     quality_rating: int,
     attempts: int, 
-    response_time_ms: int,
-    guessed_correctly: bool
+    response_time_ms: int
 ) -> SessionResult:
     """Create a session result record."""
     db_result = SessionResult(
@@ -79,8 +78,7 @@ async def create_session_result(
         session_id=session_id,
         quality_rating=quality_rating,
         attempts=attempts,
-        response_time_ms=response_time_ms,
-        guessed_correctly=guessed_correctly
+        response_time_ms=response_time_ms
     )
     db.add(db_result)
     await db.commit()
@@ -165,8 +163,7 @@ async def process_session_results(
             session_id=session_id,
             quality_rating=result.quality_rating,
             attempts=result.attempts,
-            response_time_ms=result.response_time_ms,
-            guessed_correctly=result.guessed_correctly
+            response_time_ms=result.response_time_ms
         )
         
         # Update word's SM-2 values
