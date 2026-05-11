@@ -15,7 +15,6 @@ dev = [
     "ruff>=0.4.0",
     "mypy>=1.4.0",
     "pre-commit>=3.0.0",
-    "black>=24.0.0",
     "types-requests>=2.31.0",
 ]
 
@@ -101,6 +100,7 @@ max-args = 10
 [tool.ruff.format]
 quote-style = "double"
 indent-style = "space"
+indent-width = 4
 docstring-code-format = true
 docstring-code-line-length = 88
 skip-magic-trailing-comma = false
@@ -155,6 +155,7 @@ disallow_incomplete_defs = false
 
 # ============================================================================
 # Black Configuration - Code formatting
+# NOTE: Kept for IDE compatibility. Actual formatting is done by ruff-format in pre-commit.
 # ============================================================================
 [tool.black]
 line-length = 88
@@ -179,6 +180,7 @@ exclude = '''
 
 # ============================================================================
 # isort Configuration - Import sorting
+# NOTE: Kept for IDE compatibility. Import sorting is handled by ruff (via 'I' select) in pre-commit.
 # ============================================================================
 [tool.isort]
 profile = "black"

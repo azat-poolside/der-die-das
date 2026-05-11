@@ -19,43 +19,35 @@ repos:
       - id: check-case-conflict
       - id: check-symlinks
 
-  # Ruff - Fast Python linter
+  # Ruff - Fast Python linter and formatter
+  # NOTE: ruff handles linting (including import sorting via 'I' select) and formatting
   - repo: https://github.com/astral-sh/ruff-pre-commit
     rev: v0.15.12
     hooks:
       - id: ruff
         args: [--fix, --show-fixes]
-        types_or: [python, pyi]
+        types: [python, pyi]
 
-  # Black - Code formatting
-  - repo: https://github.com/psf/black
-    rev: 25.1.1
+  # Ruff format - Code formatting (fast alternative to black)
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: v0.15.12
     hooks:
-      - id: black
-        language_version: python311
-        types_or: [python, pyi]
-
-  # isort - Import sorting
-  - repo: https://github.com/pycqa/isort
-    rev: 5.13.2
-    hooks:
-      - id: isort
-        args: ["--profile", "black"]
-        types_or: [python, pyi]
+      - id: ruff-format
+        types: [python, pyi]
 
   # MyPy - Static type checking
   - repo: https://github.com/pre-commit/mirrors-mypy
     rev: v1.15.0
     hooks:
       - id: mypy
-        additional_dependencies: [types-requests]
-        args: [
-          --ignore-missing-imports,
-          --no-error-summary,
-          --show-error-codes,
-          --pretty,
-        ]
-        types: [file, python]
+        additional_dependencies:
+          - types-requests
+        args:
+          - --ignore-missing-imports
+          - --no-error-summary
+          - --show-error-codes
+          - --pretty
+        types: [python]
         exclude: ^(tests/|test_)
 
   # Bandit - Security linter
@@ -63,6 +55,10 @@ repos:
     rev: 1.7.9
     hooks:
       - id: bandit
-        args: [--severity-level, "medium", --skip, "B101"]
-        types: [file, python]
+        args:
+          - --severity-level
+          - medium
+          - --skip
+          - B101
+        types: [python]
         exclude: ^(tests/|test_)
