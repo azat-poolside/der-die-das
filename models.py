@@ -34,6 +34,7 @@ class SessionResult(Base):
     quality_rating = Column(Integer, nullable=False)  # SM-2 quality rating (0-5)
     attempts = Column(Integer, nullable=False)
     response_time_ms = Column(Integer, nullable=False)
+    guessed_correctly = Column(Boolean, nullable=False)  # Whether user guessed correctly
 
     # Relationship to word
     word = relationship("Word", back_populates="session_results")

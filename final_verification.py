@@ -57,6 +57,7 @@ for word in words[:5]:
     results.append({
         "word_id": word["id"],
         "quality_rating": 4,  # Correct answer
+        "guessed_correctly": True,  # Quality rating 4 = correct with hesitation
         "attempts": 1,
         "response_time_ms": 2000
     })
@@ -70,7 +71,7 @@ assert response.status_code == 200, f"Expected 200, got {response.status_code}"
 data = response.json()
 assert data["words_practiced"] == 5, f"Expected 5 words practiced, got {data['words_practiced']}"
 print(f"✓ Accepts results for each word")
-print(f"✓ Parameters accepted: word_id, quality_rating, attempts, response_time_ms")
+print(f"✓ Parameters accepted: word_id, quality_rating, guessed_correctly, attempts, response_time_ms")
 print(f"✓ Returns words_practiced: {data['words_practiced']}")
 
 print("\n4. ACCEPTANCE CRITERIA VERIFICATION")
@@ -121,6 +122,7 @@ async def verify_acceptance():
                 "results": [{
                     "word_id": word_id,
                     "quality_rating": 5,
+                    "guessed_correctly": True,  # Quality rating 5 = perfect response (correct)
                     "attempts": 1,
                     "response_time_ms": 1500
                 }]

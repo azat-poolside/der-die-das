@@ -35,6 +35,7 @@ def test_end_session(session_id, words):
         results.append({
             "word_id": word["id"],
             "quality_rating": 4,  # Correct with hesitation
+            "guessed_correctly": True,  # quality_rating 4 represents a correct answer
             "attempts": 1,
             "response_time_ms": 2000
         })

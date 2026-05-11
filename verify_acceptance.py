@@ -45,9 +45,11 @@ def test_session_end_updates_database():
     # Create results with different quality ratings
     results = []
     for i, word in enumerate(words[:3]):
+        quality = 5 if i == 0 else (3 if i == 1 else 1)  # Correct, Correct, Incorrect
         results.append({
             "word_id": word["id"],
-            "quality_rating": 5 if i == 0 else (3 if i == 1 else 1),  # Correct, Correct, Incorrect
+            "quality_rating": quality,
+            "guessed_correctly": quality >= 3,  # True if quality_rating >= 3 (correct)
             "attempts": 1,
             "response_time_ms": 2000
         })
