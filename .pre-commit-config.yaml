@@ -19,8 +19,7 @@ repos:
       - id: check-case-conflict
       - id: check-symlinks
 
-  # Ruff - Fast Python linter and formatter
-  # NOTE: ruff-format replaces black, and ruff lint with 'I' select replaces isort
+  # Ruff - Fast Python linter
   - repo: https://github.com/astral-sh/ruff-pre-commit
     rev: v0.15.12
     hooks:
@@ -28,10 +27,20 @@ repos:
         args: [--fix, --show-fixes]
         types_or: [python, pyi]
 
-  - repo: https://github.com/astral-sh/ruff-pre-commit
-    rev: v0.15.12
+  # Black - Code formatting
+  - repo: https://github.com/psf/black
+    rev: 25.1.1
     hooks:
-      - id: ruff-format
+      - id: black
+        language_version: python311
+        types_or: [python, pyi]
+
+  # isort - Import sorting
+  - repo: https://github.com/pycqa/isort
+    rev: 5.13.2
+    hooks:
+      - id: isort
+        args: ["--profile", "black"]
         types_or: [python, pyi]
 
   # MyPy - Static type checking
@@ -39,7 +48,7 @@ repos:
     rev: v1.15.0
     hooks:
       - id: mypy
-        additional_dependencies: [types-all]
+        additional_dependencies: [types-requests]
         args: [
           --ignore-missing-imports,
           --no-error-summary,
@@ -57,6 +66,3 @@ repos:
         args: [--severity-level, "medium", --skip, "B101"]
         types: [file, python]
         exclude: ^(tests/|test_)
-
-# NOTE: Black and isort are handled by ruff (ruff-format and ruff lint with 'I' select).
-# Their configurations in pyproject.toml are kept for compatibility and IDE integration.
