@@ -29,7 +29,7 @@ print("\n2. DATABASE SEEDING")
 print("-" * 70)
 # Verification 2: Run seed_data.py
 import subprocess
-result = subprocess.run(['./venv/bin/python3', 'seed_data.py'], capture_output=True, text=True)
+result = subprocess.run(['python3', 'seed_data.py'], capture_output=True, text=True)
 print(result.stdout.strip())
 print("✓ Database seeding successful")
 
