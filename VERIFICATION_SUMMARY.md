@@ -19,7 +19,7 @@
 
 ### 4. ✓ API Endpoint: POST /sessions/end
 - **Expected**: Accepts results and updates database
-- **Actual**: Accepts SessionEndRequest with session_id and List[WordResult], creates SessionResult records and updates Word SM-2 values
+- **Actual**: Accepts SessionEndRequest with session_id, user_id, and List[WordResult], creates SessionResult records and updates **Progress SM-2 values**
 - **Parameters Accepted**:
   - word_id: int
   - quality_rating: int (0-5 scale)
@@ -27,11 +27,11 @@
   - response_time_ms: int
 - **Status**: PASSED
 
-### 5. ✓ Acceptance Criteria: Word Selection
+### Acceptance Criteria: Word Selection
 - **Expected**: API should pick 30 words according to schedule (next_practice <= now) or new at random
 - **Actual**: 
-  - Prioritizes words with next_practice <= now
-  - Falls back to random new words (next_practice IS NULL) when needed
+  - Prioritizes words with Progress.next_practice <= now (user-specific scheduling)
+  - Falls back to random new words (no Progress record) when needed
   - Always returns exactly 30 words
 - **Status**: PASSED
 
@@ -47,33 +47,50 @@ The backend implements the SM-2 spaced repetition algorithm:
 
 ### Database Models
 1. **Word Model**:
-   - id, german_word, article, english_translation
+   - id, noun, article, english_translation
+   
+2. **Progress Model**:
+   - user_id, word_id
    - next_practice, ease_factor, interval, repetitions (SM-2 fields)
    
-2. **SessionResult Model**:
+3. **SessionResult Model**:
    - word_id, session_id, quality_rating, attempts, response_time_ms
 
 ### API Endpoints
 1. **POST /sessions/start**
+   - Requires user_id parameter (user-specific scheduling)
    - Creates session_id (UUID)
-   - Returns 30 words prioritizing scheduled ones
+   - Returns 30 words prioritizing user's scheduled ones
    
 2. **POST /sessions/end**
    - Accepts session_id and results
    - Creates SessionResult records
-   - Updates Word SM-2 values
+   - Updates Progress SM-2 values (user-specific per word)
    - Returns words_practiced count
 
-## Note on "guessed_correctly" Field
-The acceptance criteria mentioned "(guessed correctly, attempts, etc.)" which suggests these are examples of expected parameters. The implementation uses `quality_rating` (0-5) which:
-- Provides more detailed correctness information than a boolean
-- Is the standard SM-2 algorithm parameter
-- Captures correctness (3-5 = correct, 0-2 = incorrect)
-- Is more useful for spaced repetition than a simple boolean
+## Acceptance Criteria Verification (as specified)
 
-This implementation choice is **recommended** as it's more robust and follows SM-2 best practices.
+### 1. ✓ Users table exists (for authentication)
+- **Expected**: Users table with authentication support
+- **Actual**: User model with id, username, email, hashed_password, is_active, is_superuser, last_login_at
+- **Status**: PASSED
 
-## Overall Status: ✅ ALL VERIFICATIONS PASSED
+### 2. ✓ German nouns table exists with article, noun, English translation
+- **Expected**: Table with article, noun (German word), English translation
+- **Actual**: Word table with article, noun, english_translation
+- **Status**: PASSED
+
+### 3. ✓ Progress tracking table exists with spaced repetition fields (SM-2)
+- **Expected**: Table with next_practice, ease_factor, interval, repetitions
+- **Actual**: Progress table with user_id, word_id, next_practice, ease_factor, interval, repetitions
+- **Status**: PASSED
+
+### 4. ✓ All models and API endpoints work correctly with user_id parameter
+- **Expected**: user_id parameter required for user-specific scheduling
+- **Actual**: All CRUD operations and API endpoints accept and use user_id
+- **Status**: PASSED
+
+## Overall Status: ✅ ALL ACCEPTANCE CRITERIA PASSED
 
 The backend implementation correctly:
 1. ✓ Contains 45 German words in seed_data.py

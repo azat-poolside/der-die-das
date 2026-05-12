@@ -153,7 +153,7 @@ function App() {
         {currentWord && (
           <>
             <div className="word-container">
-              <h2 className="german-word">{currentWord.german_word}</h2>
+              <h2 className="german-word">{currentWord.noun}</h2>
               {showTranslation && (
                 <p className="english-translation">{currentWord.english_translation}</p>
               )}
