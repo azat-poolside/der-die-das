@@ -1,11 +1,13 @@
 """CRUD operations for Der Die Das app."""
 
+import os
 import uuid
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from typing import List, Optional
 from sqlalchemy import select, func
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.exc import SQLAlchemyError
+import jwt
 
 from passlib.context import CryptContext
 
@@ -14,6 +16,63 @@ from schema import WordInDB, WordResult, UserCreate, UserInDB, ProgressInDB
 
 # Password hashing context (singleton)
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
+
+# JWT Configuration
+SECRET_KEY = os.environ.get("SECRET_KEY", "your-secret-key-change-in-production")  # Should be from environment variable
+ALGORITHM = "HS256"
+ACCESS_TOKEN_EXPIRE_MINUTES = 30
+
+
+def generate_jwt_token(user_id: int, username: str) -> str:
+    """Generate a JWT token with user_id and username in payload.
+
+    Args:
+        user_id: The user's database ID
+        username: The user's username
+
+    Returns:
+        Encoded JWT token string
+    """
+    expire = datetime.now(timezone.utc) + timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
+    to_encode = {
+        "sub": username,  # Subject (standard JWT claim)
+        "user_id": user_id,
+        "username": username,
+        "exp": expire,
+        "iat": datetime.now(timezone.utc)  # Issued at
+    }
+    encoded_jwt = jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
+    return encoded_jwt
+
+
+def decode_jwt_token(token: str) -> dict:
+    """Decode and validate a JWT token.
+
+    Args:
+        token: The JWT token string to decode
+
+    Returns:
+        Decoded payload dictionary
+
+    Raises:
+        HTTPException: If token is invalid or expired
+    """
+    from fastapi import HTTPException, status
+    try:
+        payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
+        return payload
+    except jwt.ExpiredSignatureError:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Token has expired",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+    except jwt.InvalidTokenError as e:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail=f"Invalid authentication token: {str(e)}",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
 
 
 # ==================== User CRUD Operations ====================

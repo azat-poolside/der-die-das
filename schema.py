@@ -153,7 +153,6 @@ class WordResult(BaseModel):
 class SessionEndRequest(BaseModel):
     """Request body for ending a session."""
     session_id: str
-    user_id: int
     results: List[WordResult]
 
 

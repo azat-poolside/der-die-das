@@ -3,15 +3,15 @@
 from fastapi import FastAPI, Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
 from fastapi.staticfiles import StaticFiles
-from fastapi.responses import FileResponse
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
-from datetime import datetime, timedelta
+from datetime import datetime
+from typing import Optional
 import os
 
 from database import get_db
-from crud import create_session_and_get_words, process_session_results, authenticate_user, create_user, get_user_by_username, get_scheduled_words, get_user_progress
-from models import Word, Progress
+from crud import create_session_and_get_words, process_session_results, authenticate_user, create_user, get_user_by_username, generate_jwt_token, decode_jwt_token, get_user_by_id
+from models import User, Word, Progress
 from schema import (
     SessionStartResponse, SessionEndRequest, SessionEndResponse,
     Token, UserCreate, UserResponse, ReviewResponse, WordInDBWithProgress
@@ -23,13 +23,54 @@ app = FastAPI()
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="token")
 
 
+# Authentication dependency to get current user
+async def get_current_user(
+    token: str = Depends(oauth2_scheme),
+    db: AsyncSession = Depends(get_db)
+) -> User:
+    """Extract and validate JWT token, return current User object.
+
+    Args:
+        token: JWT token from Authorization header
+        db: Database session
+
+    Returns:
+        User object if token is valid
+
+    Raises:
+        HTTPException: 401 if token is invalid/missing
+    """
+    # Decode and validate the token
+    payload = decode_jwt_token(token)
+
+    # Extract user_id from token payload
+    user_id: Optional[int] = payload.get("user_id")
+    if user_id is None:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid token: missing user_id",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+
+    # Fetch user from database
+    user = await get_user_by_id(db, user_id)
+    if user is None:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="User not found",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+
+    return user
+
+
 # Authentication routes
 @app.post("/token", response_model=Token)
 async def login_for_access_token(
     form_data: OAuth2PasswordRequestForm = Depends(),
     db: AsyncSession = Depends(get_db)
 ):
-    """Authenticate user and return access token."""
+    """Authenticate user and return JWT access token."""
     user = await authenticate_user(db, form_data.username, form_data.password)
     if not user:
         raise HTTPException(
@@ -37,8 +78,9 @@ async def login_for_access_token(
             detail="Incorrect username or password",
             headers={"WWW-Authenticate": "Bearer"},
         )
-    # For now, return a simple token (in production, use JWT)
-    return Token(access_token=user.username, token_type="bearer")
+    # Generate proper JWT token with user_id and username in payload
+    access_token = generate_jwt_token(user.id, user.username)
+    return Token(access_token=access_token, token_type="bearer")
 
 
 @app.post("/users", response_model=UserResponse)
@@ -58,18 +100,22 @@ async def register_user(user_create: UserCreate, db: AsyncSession = Depends(get_
 
 @app.post("/sessions/start", response_model=SessionStartResponse)
 async def start_session(
-    user_id: int,  # In production, extract from token
+    current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db)
 ):
     """Start a new session and return session_id with 30 words for a specific user."""
-    session_id, words = await create_session_and_get_words(db, user_id)
+    session_id, words = await create_session_and_get_words(db, current_user.id)
     return SessionStartResponse(session_id=session_id, words=words)
 
 
 @app.post("/sessions/end", response_model=SessionEndResponse)
-async def end_session(request: SessionEndRequest, db: AsyncSession = Depends(get_db)):
+async def end_session(
+    request: SessionEndRequest,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db)
+):
     """Process session results and return summary with retry words."""
-    words_practiced, retry_words, retry_words_details = await process_session_results(db, request.session_id, request.user_id, request.results)
+    words_practiced, retry_words, retry_words_details = await process_session_results(db, request.session_id, current_user.id, request.results)
     return SessionEndResponse(
         message="Session completed successfully",
         words_practiced=words_practiced,
@@ -79,7 +125,10 @@ async def end_session(request: SessionEndRequest, db: AsyncSession = Depends(get
 
 
 @app.get("/reviews", response_model=ReviewResponse)
-async def get_reviews(user_id: int, db: AsyncSession = Depends(get_db)):
+async def get_reviews(
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db)
+):
     """Get words due for review for a specific user."""
     now = datetime.utcnow()
 
@@ -87,7 +136,7 @@ async def get_reviews(user_id: int, db: AsyncSession = Depends(get_db)):
     result = await db.execute(
         select(Word, Progress)
         .join(Progress, Word.id == Progress.word_id)
-        .where(Progress.user_id == user_id)
+        .where(Progress.user_id == current_user.id)
         .where(Progress.next_practice <= now)
         .order_by(Progress.interval.asc())
         .limit(30)
