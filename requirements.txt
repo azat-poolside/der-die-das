@@ -1,11 +1,24 @@
-# Backend dependencies
+# ============================================================================
+# Core Dependencies (required for the app to run)
+# ============================================================================
 fastapi>=0.100.0
-uvicorn[standard]>=0.23.0
-sqlalchemy>=2.0.0
+sqlalchemy[asyncio]>=2.0.0
 aiosqlite>=0.19.0
 pydantic>=2.0.0
+uvicorn>=0.23.0
+
+# ============================================================================
+# Authentication Dependencies (work-specific)
+# ============================================================================
 passlib[bcrypt]>=1.7.0
 
-# Optional: for development
-# pytest>=7.0.0
-# pytest-asyncio>=0.21.0
+# ============================================================================
+# Development Dependencies (linting, testing, type checking)
+# ============================================================================
+ruff>=0.4.0
+mypy>=1.10.0
+pre-commit>=3.7.0
+pytest>=8.0.0
+requests>=2.31.0
+types-requests>=2.31.0
+types-sqlalchemy>=2.0.0
