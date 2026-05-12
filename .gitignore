@@ -69,3 +69,6 @@ htmlcov/
 .coverage
 .pytest_cache/
 htmlcov/
+
+# Ruff
+.ruff_cache/
