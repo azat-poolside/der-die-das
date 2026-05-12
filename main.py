@@ -51,7 +51,7 @@ async def register_user(user_create: UserCreate, db: AsyncSession = Depends(get_
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Username already registered"
         )
-    
+
     user = await create_user(db, user_create)
     return UserResponse.model_validate(user)
 
@@ -82,7 +82,7 @@ async def end_session(request: SessionEndRequest, db: AsyncSession = Depends(get
 async def get_reviews(user_id: int, db: AsyncSession = Depends(get_db)):
     """Get words due for review for a specific user."""
     now = datetime.utcnow()
-    
+
     # Get scheduled words with their progress data
     result = await db.execute(
         select(Word, Progress)
@@ -92,10 +92,10 @@ async def get_reviews(user_id: int, db: AsyncSession = Depends(get_db)):
         .order_by(Progress.interval.asc())
         .limit(30)
     )
-    
+
     words_with_progress = []
     next_review_at = None
-    
+
     for word, progress in result.all():
         word_dict = {
             "id": word.id,
@@ -117,7 +117,7 @@ async def get_reviews(user_id: int, db: AsyncSession = Depends(get_db)):
         words_with_progress.append(word_dict)
         if next_review_at is None:
             next_review_at = progress.next_practice
-    
+
     return ReviewResponse(
         words_due=[WordInDBWithProgress(**w) for w in words_with_progress],
         total_due=len(words_with_progress),
