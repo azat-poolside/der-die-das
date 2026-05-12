@@ -46,7 +46,7 @@ function App() {
   const handleAnswer = (article) => {
     const currentWord = wordQueue[currentIndex]
     const isCorrect = article === currentWord.article
-    
+
     setSelectedAnswer(article)
     setShowTranslation(true)
 
@@ -72,7 +72,7 @@ function App() {
     setTimeout(() => {
       setShowTranslation(false)
       setSelectedAnswer(null)
-      
+
       if (currentIndex + 1 < wordQueue.length) {
         setCurrentIndex(currentIndex + 1)
       } else {
@@ -97,10 +97,10 @@ function App() {
       })
       if (!response.ok) throw new Error('Failed to end session')
       const data = await response.json()
-      
+
       // Log retry_words_details for debugging (API provides this for immediate retry)
       console.log('Session ended. Retry words:', data.retry_words_details)
-      
+
       setSession({ id: session.id, summary: data })
       setSessionComplete(true)
     } catch (err) {
@@ -122,10 +122,10 @@ function App() {
           <p>Learn German articles with spaced repetition</p>
           <div style={{ marginBottom: '1rem' }}>
             <label>
-              User ID: 
-              <input 
-                type="number" 
-                value={userId} 
+              User ID:
+              <input
+                type="number"
+                value={userId}
                 onChange={(e) => setUserId(parseInt(e.target.value) || 1)}
                 style={{ marginLeft: '0.5rem', width: '60px' }}
               />
@@ -144,7 +144,7 @@ function App() {
   if (sessionComplete) {
     const correctCount = results.filter(r => r.quality_rating >= 3).length
     const totalCount = results.length
-    
+
     return (
       <div className="app">
         <div className="end-screen">
@@ -167,7 +167,7 @@ function App() {
         <div className="progress">
           Word {currentIndex + 1} of {wordQueue.length}
         </div>
-        
+
         {currentWord && (
           <>
             <div className="word-container">
@@ -179,20 +179,20 @@ function App() {
 
             {!showTranslation ? (
               <div className="article-buttons">
-                <button 
-                  className="article-btn der" 
+                <button
+                  className="article-btn der"
                   onClick={() => handleAnswer('der')}
                 >
                   der
                 </button>
-                <button 
-                  className="article-btn die" 
+                <button
+                  className="article-btn die"
                   onClick={() => handleAnswer('die')}
                 >
                   die
                 </button>
-                <button 
-                  className="article-btn das" 
+                <button
+                  className="article-btn das"
                   onClick={() => handleAnswer('das')}
                 >
                   das
@@ -211,7 +211,7 @@ function App() {
             )}
           </>
         )}
-        
+
         {error && <p className="error">{error}</p>}
       </div>
     </div>

@@ -46,11 +46,11 @@ The backend implements the SM-2 spaced repetition algorithm:
 ### Database Models
 1. **Word Model**:
    - id, noun, article, english_translation
-   
+
 2. **Progress Model**:
    - user_id, word_id
    - next_practice, **next_review**, ease_factor, interval, repetitions (SM-2 fields)
-   
+
 3. **SessionResult Model**:
    - word_id, session_id, quality_rating, attempts, response_time_ms
 
@@ -59,7 +59,7 @@ The backend implements the SM-2 spaced repetition algorithm:
    - Requires user_id parameter (user-specific scheduling)
    - Creates session_id (UUID)
    - Returns 30 words prioritizing user's scheduled ones
-   
+
 2. **POST /sessions/end**
    - Accepts session_id, user_id, and results
    - Creates SessionResult records
