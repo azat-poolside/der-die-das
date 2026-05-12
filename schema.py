@@ -28,7 +28,7 @@ class UserUpdate(BaseModel):
 class UserInDB(UserBase):
     """Schema for User in database."""
     model_config = ConfigDict(from_attributes=True)
-    
+
     id: int
     hashed_password: str
     created_at: datetime
@@ -40,7 +40,7 @@ class UserInDB(UserBase):
 class UserResponse(BaseModel):
     """Schema for User response (without sensitive data)."""
     model_config = ConfigDict(from_attributes=True)
-    
+
     id: int
     username: str
     email: str
@@ -71,12 +71,13 @@ class ProgressUpdate(BaseModel):
 class ProgressInDB(ProgressBase):
     """Schema for Progress in database."""
     model_config = ConfigDict(from_attributes=True)
-    
+
     id: int
     ease_factor: float
     interval: int
     repetitions: int
     next_practice: Optional[datetime] = None
+    next_review: Optional[datetime] = None  # Alias for next_practice (spaced repetition terminology)
     created_at: datetime
 
 
@@ -103,7 +104,7 @@ class WordUpdate(BaseModel):
 class WordInDB(WordBase):
     """Schema for Word in database."""
     model_config = ConfigDict(from_attributes=True)
-    
+
     id: int
 
 
@@ -129,7 +130,7 @@ class SessionResultCreate(SessionResultBase):
 class SessionResultInDB(SessionResultBase):
     """Schema for SessionResult in database."""
     model_config = ConfigDict(from_attributes=True)
-    
+
     id: int
     session_id: str
 
@@ -160,6 +161,16 @@ class SessionEndResponse(BaseModel):
     """Response for ending a session."""
     message: str
     words_practiced: int
+    retry_words: List[int]  # Word IDs that should be immediately retried (quality_rating < 3)
+    retry_words_details: Optional[List[WordInDB]] = None  # Full word details for immediate retry
+
+
+# Reviews endpoint response
+class ReviewResponse(BaseModel):
+    """Response for getting words due for review."""
+    words_due: List[WordInDBWithProgress]
+    total_due: int
+    next_review_at: Optional[datetime] = None
 
 
 # Authentication schemas
