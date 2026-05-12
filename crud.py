@@ -15,7 +15,8 @@ from models import User, Word, Progress, SessionResult
 from schema import WordInDB, WordResult, UserCreate, UserInDB, ProgressInDB
 
 # Password hashing context (singleton)
-pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
+# Using sha256_crypt as fallback since bcrypt 5.0 has compatibility issues with passlib
+pwd_context = CryptContext(schemes=["sha256_crypt"], deprecated="auto")
 
 # JWT Configuration
 SECRET_KEY = os.environ.get("SECRET_KEY", "your-secret-key-change-in-production")  # Should be from environment variable
