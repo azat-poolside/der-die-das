@@ -12,11 +12,11 @@ A web-based spaced repetition app for learning German articles (der, die, das). 
 
 ## Tech Stack
 
-- **Frontend**: React/Vue.js (TBD)
-- **Backend**: Node.js/Express or Python/FastAPI (TBD)
-- **Database**: PostgreSQL or SQLite
-- **Authentication**: JWT-based auth
-- **Deployment**: Docker-ready
+- **Frontend**: React 18 with Vite
+- **Backend**: Python FastAPI
+- **Database**: SQLite (with SQLAlchemy ORM)
+- **Authentication**: OAuth2 Password Flow (with bcrypt password hashing)
+- **Deployment**: Uvicorn server (Docker-ready)
 
 ## How It Works
 
@@ -32,14 +32,25 @@ A web-based spaced repetition app for learning German articles (der, die, das). 
 git clone https://github.com/yourusername/der-die-das.git
 cd der-die-das
 
-# Install dependencies
-npm install  # or pip install -r requirements.txt
+# Install Python dependencies
+pip install -r requirements.txt
+
+# Install frontend dependencies
+cd frontend
+npm install
 
 # Set up environment variables
 cp .env.example .env
 
-# Run the development server
-npm run dev  # or python main.py
+# Initialize the database
+python seed_data.py
+
+# Run the development servers
+# Backend (from root directory):
+uvicorn main:app --reload
+
+# Frontend (from frontend directory):
+npm run dev
 ```
 
 ## Contributing
