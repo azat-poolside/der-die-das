@@ -9,7 +9,13 @@ BASE_URL = "http://127.0.0.1:8000"
 def test_start_session():
     """Test POST /sessions/start endpoint."""
     print("Testing POST /sessions/start...")
-    response = requests.post(f"{BASE_URL}/sessions/start")
+    
+    # First, create a user
+    user_data = {"username": "test_api_user", "email": "api_test@example.com", "password": "testpass123"}
+    user_resp = requests.post(f"{BASE_URL}/users", json=user_data)
+    user_id = user_resp.json().get("id", 1)
+    
+    response = requests.post(f"{BASE_URL}/sessions/start?user_id={user_id}")
     
     print(f"Status Code: {response.status_code}")
     data = response.json()
@@ -25,7 +31,7 @@ def test_start_session():
     return data["session_id"], data["words"]
 
 
-def test_end_session(session_id, words):
+def test_end_session(session_id, words, user_id):
     """Test POST /sessions/end endpoint."""
     print("Testing POST /sessions/end...")
     
@@ -42,6 +48,7 @@ def test_end_session(session_id, words):
     
     payload = {
         "session_id": session_id,
+        "user_id": user_id,
         "results": results
     }
     
@@ -72,7 +79,15 @@ if __name__ == "__main__":
     
     try:
         session_id, words = test_start_session()
-        test_end_session(session_id, words)
+        user_id = 1  # Will be created by test_start_session
+        try:
+            user_data = {"username": "test_api_user", "email": "api_test@example.com", "password": "testpass123"}
+            user_resp = requests.post(f"{BASE_URL}/users", json=user_data)
+            user_id = user_resp.json().get("id", 1)
+        except:
+            pass  # Use default user_id = 1
+        
+        test_end_session(session_id, words, user_id)
         
         print("=" * 50)
         print("All API tests PASSED! ✓")
