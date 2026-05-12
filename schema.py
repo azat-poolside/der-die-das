@@ -77,6 +77,7 @@ class ProgressInDB(ProgressBase):
     interval: int
     repetitions: int
     next_practice: Optional[datetime] = None
+    next_review: Optional[datetime] = None  # Alias for next_practice (spaced repetition terminology)
     created_at: datetime
 
 
@@ -160,6 +161,16 @@ class SessionEndResponse(BaseModel):
     """Response for ending a session."""
     message: str
     words_practiced: int
+    retry_words: List[int]  # Word IDs that should be immediately retried (quality_rating < 3)
+    retry_words_details: Optional[List[WordInDB]] = None  # Full word details for immediate retry
+
+
+# Reviews endpoint response
+class ReviewResponse(BaseModel):
+    """Response for getting words due for review."""
+    words_due: List[WordInDBWithProgress]
+    total_due: int
+    next_review_at: Optional[datetime] = None
 
 
 # Authentication schemas

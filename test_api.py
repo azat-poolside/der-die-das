@@ -40,8 +40,7 @@ def test_end_session(session_id, words, user_id):
     for i, word in enumerate(words[:5]):  # Test with 5 words
         results.append({
             "word_id": word["id"],
-            "quality_rating": 4,  # Correct with hesitation
-            "guessed_correctly": True,  # quality_rating 4 represents a correct answer
+            "quality_rating": 4,  # Correct with hesitation (quality >= 3 is correct)
             "attempts": 1,
             "response_time_ms": 2000
         })

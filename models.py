@@ -47,6 +47,7 @@ class Progress(Base):
     user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
     word_id = Column(Integer, ForeignKey("words.id"), nullable=False)
     next_practice = Column(DateTime, nullable=True)
+    next_review = Column(DateTime, nullable=True)  # Alias for next_practice (spaced repetition terminology)
     ease_factor = Column(Float, default=2.5)  # SM-2 algorithm ease factor (2.5 default)
     interval = Column(Integer, default=0)  # Days until next practice
     repetitions = Column(Integer, default=0)  # Consecutive correct answers (SM-2)

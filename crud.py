@@ -243,8 +243,9 @@ async def update_progress_sm2(db: AsyncSession, user_id: int, word_id: int, qual
         progress.repetitions = 0
         progress.interval = 1  # SM-2 spec: incorrect answers should be scheduled for 1 day later
     
-    # Set next_practice based on calculated interval
+    # Set next_practice and next_review based on calculated interval
     progress.next_practice = now + timedelta(days=progress.interval)
+    progress.next_review = progress.next_practice  # Alias for spaced repetition terminology
     
     db.add(progress)
     await db.commit()
@@ -264,11 +265,16 @@ async def process_session_results(
     session_id: str, 
     user_id: int,
     results: List[WordResult]
-) -> int:
+) -> tuple[int, List[int], Optional[List[WordInDB]]]:
     """
     Process session results - create records and update user's word progress (SM-2).
-    Returns the number of words practiced.
+    Returns a tuple of (words_practiced, retry_words, retry_words_details) where retry_words contains
+    word_ids that should be immediately retried (quality_rating < 3), and retry_words_details
+    contains the full WordInDB objects for those words.
     """
+    retry_words: List[int] = []
+    retry_words_details: List[WordInDB] = []
+    
     for result in results:
         # Create session result record
         await create_session_result(
@@ -280,6 +286,10 @@ async def process_session_results(
             response_time_ms=result.response_time_ms
         )
         
+        # Track words that need immediate retry (quality_rating < 3 means incorrect)
+        if result.quality_rating < 3:
+            retry_words.append(result.word_id)
+        
         # Update user's progress SM-2 values for this word
         await update_progress_sm2(
             db=db,
@@ -288,4 +298,11 @@ async def process_session_results(
             quality_rating=result.quality_rating
         )
     
-    return len(results)
+    # Fetch full word details for retry_words
+    if retry_words:
+        words_result = await db.execute(
+            select(Word).where(Word.id.in_(retry_words))
+        )
+        retry_words_details = [WordInDB.model_validate(word) for word in words_result.scalars().all()]
+    
+    return len(results), retry_words, retry_words_details if retry_words_details else None
