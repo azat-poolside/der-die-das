@@ -28,7 +28,7 @@ class UserUpdate(BaseModel):
 class UserInDB(UserBase):
     """Schema for User in database."""
     model_config = ConfigDict(from_attributes=True)
-    
+
     id: int
     hashed_password: str
     created_at: datetime
@@ -40,7 +40,7 @@ class UserInDB(UserBase):
 class UserResponse(BaseModel):
     """Schema for User response (without sensitive data)."""
     model_config = ConfigDict(from_attributes=True)
-    
+
     id: int
     username: str
     email: str
@@ -71,7 +71,7 @@ class ProgressUpdate(BaseModel):
 class ProgressInDB(ProgressBase):
     """Schema for Progress in database."""
     model_config = ConfigDict(from_attributes=True)
-    
+
     id: int
     ease_factor: float
     interval: int
@@ -104,7 +104,7 @@ class WordUpdate(BaseModel):
 class WordInDB(WordBase):
     """Schema for Word in database."""
     model_config = ConfigDict(from_attributes=True)
-    
+
     id: int
 
 
@@ -130,7 +130,7 @@ class SessionResultCreate(SessionResultBase):
 class SessionResultInDB(SessionResultBase):
     """Schema for SessionResult in database."""
     model_config = ConfigDict(from_attributes=True)
-    
+
     id: int
     session_id: str
 
@@ -153,7 +153,6 @@ class WordResult(BaseModel):
 class SessionEndRequest(BaseModel):
     """Request body for ending a session."""
     session_id: str
-    user_id: int
     results: List[WordResult]
 
 

@@ -11,6 +11,7 @@ uvicorn>=0.23.0
 # Authentication Dependencies (work-specific)
 # ============================================================================
 passlib[bcrypt]>=1.7.0
+PyJWT>=2.8.0
 
 # ============================================================================
 # Development Dependencies (linting, testing, type checking)
