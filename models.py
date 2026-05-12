@@ -1,6 +1,6 @@
 """SQLAlchemy models for Der Die Das app."""
 
-from sqlalchemy import Column, Integer, String, DateTime, ForeignKey, Float, Boolean, UniqueConstraint
+from sqlalchemy import Column, Integer, String, DateTime, ForeignKey, Float, Boolean, UniqueConstraint, func
 from sqlalchemy.orm import relationship
 from database import Base
 
@@ -14,7 +14,7 @@ class User(Base):
     username = Column(String, unique=True, index=True, nullable=False)
     email = Column(String, unique=True, index=True, nullable=False)
     hashed_password = Column(String, nullable=False)
-    created_at = Column(DateTime, nullable=False, server_default="CURRENT_TIMESTAMP")
+    created_at = Column(DateTime, nullable=False, server_default=func.now())
     is_active = Column(Boolean, default=True)
     is_superuser = Column(Boolean, default=False)
     last_login_at = Column(DateTime, nullable=True)
@@ -51,7 +51,7 @@ class Progress(Base):
     ease_factor = Column(Float, default=2.5)  # SM-2 algorithm ease factor (2.5 default)
     interval = Column(Integer, default=0)  # Days until next practice
     repetitions = Column(Integer, default=0)  # Consecutive correct answers (SM-2)
-    created_at = Column(DateTime, nullable=False, server_default="CURRENT_TIMESTAMP")
+    created_at = Column(DateTime, nullable=False, server_default=func.now())
 
     # Relationships
     user = relationship("User", back_populates="progress_records")

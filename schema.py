@@ -172,6 +172,48 @@ class ReviewResponse(BaseModel):
     next_review_at: Optional[datetime] = None
 
 
+# Quiz endpoint schemas
+
+class QuizNextResponse(BaseModel):
+    """Response for getting the next word to review in quiz mode."""
+    session_id: str
+    word: Optional[WordInDBWithProgress] = None
+
+
+class QuizSessionStatistics(BaseModel):
+    """Statistics for a quiz session."""
+    total_answers: int = 0
+    correct_answers: int = 0
+    incorrect_answers: int = 0
+    avg_response_time_ms: float = 0.0
+    session_start_time: Optional[datetime] = None
+
+
+class QuizAnswerRequest(BaseModel):
+    """Request body for submitting a quiz answer."""
+    session_id: str
+    word_id: int
+    quality_rating: int  # SM-2 quality rating (0-5)
+    attempts: int
+    response_time_ms: int
+
+
+class QuizAnswerResponse(BaseModel):
+    """Response for submitting a quiz answer."""
+    success: bool
+    retry_word: Optional[WordInDBWithProgress] = None
+    next_review_at: Optional[datetime] = None
+
+
+class QuizSessionResponse(BaseModel):
+    """Response for getting current quiz session state."""
+    session_id: str
+    words_practiced_count: int
+    current_position: int
+    pending_retry_words: List[int] = []
+    session_statistics: QuizSessionStatistics
+
+
 # Authentication schemas
 class Token(BaseModel):
     """Schema for authentication token response."""
