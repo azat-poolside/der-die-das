@@ -7,42 +7,158 @@ from sqlalchemy import select, func
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.exc import SQLAlchemyError
 
-from models import Word, SessionResult
-from schema import WordInDB, WordResult
+from passlib.context import CryptContext
+
+from models import User, Word, Progress, SessionResult
+from schema import WordInDB, WordResult, UserCreate, UserInDB, ProgressInDB
+
+# Password hashing context (singleton)
+pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
 
-async def get_scheduled_words(db: AsyncSession, now: datetime) -> List[Word]:
-    """Get words that are scheduled for practice (next_practice <= now)."""
+# ==================== User CRUD Operations ====================
+
+async def get_user_by_id(db: AsyncSession, user_id: int) -> Optional[User]:
+    """Get a user by ID."""
+    result = await db.execute(select(User).where(User.id == user_id))
+    return result.scalar_one_or_none()
+
+
+async def get_user_by_username(db: AsyncSession, username: str) -> Optional[User]:
+    """Get a user by username."""
+    result = await db.execute(select(User).where(User.username == username))
+    return result.scalar_one_or_none()
+
+
+async def get_user_by_email(db: AsyncSession, email: str) -> Optional[User]:
+    """Get a user by email."""
+    result = await db.execute(select(User).where(User.email == email))
+    return result.scalar_one_or_none()
+
+
+async def create_user(db: AsyncSession, user_create: UserCreate) -> User:
+    """Create a new user."""
+    hashed_password = pwd_context.hash(user_create.password)
+    
+    db_user = User(
+        username=user_create.username,
+        email=user_create.email,
+        hashed_password=hashed_password,
+        is_active=True,
+        is_superuser=False
+    )
+    db.add(db_user)
+    await db.commit()
+    await db.refresh(db_user)
+    return db_user
+
+
+async def authenticate_user(db: AsyncSession, username: str, password: str) -> Optional[User]:
+    """Authenticate a user by username and password."""
+    user = await get_user_by_username(db, username)
+    if not user:
+        return None
+    
+    if not pwd_context.verify(password, user.hashed_password):
+        return None
+    
+    # Update last login time
+    user.last_login_at = datetime.utcnow()
+    db.add(user)
+    await db.commit()
+    await db.refresh(user)
+    
+    return user
+
+
+async def update_user_last_login(db: AsyncSession, user_id: int) -> Optional[User]:
+    """Update user's last login timestamp."""
+    user = await get_user_by_id(db, user_id)
+    if user:
+        user.last_login_at = datetime.utcnow()
+        db.add(user)
+        await db.commit()
+        await db.refresh(user)
+    return user
+
+
+# ==================== Progress CRUD Operations ====================
+
+async def get_or_create_progress(db: AsyncSession, user_id: int, word_id: int) -> Progress:
+    """Get existing progress record or create a new one for user-word pair."""
+    result = await db.execute(
+        select(Progress).where(Progress.user_id == user_id, Progress.word_id == word_id)
+    )
+    progress = result.scalar_one_or_none()
+    
+    if not progress:
+        progress = Progress(user_id=user_id, word_id=word_id)
+        db.add(progress)
+        await db.commit()
+        await db.refresh(progress)
+    
+    return progress
+
+
+async def get_user_progress(db: AsyncSession, user_id: int) -> List[ProgressInDB]:
+    """Get all progress records for a user."""
+    result = await db.execute(select(Progress).where(Progress.user_id == user_id))
+    return [ProgressInDB.model_validate(p) for p in result.scalars().all()]
+
+
+async def get_progress_for_word(db: AsyncSession, user_id: int, word_id: int) -> Optional[Progress]:
+    """Get progress record for a specific user-word pair."""
+    result = await db.execute(
+        select(Progress).where(Progress.user_id == user_id, Progress.word_id == word_id)
+    )
+    return result.scalar_one_or_none()
+
+
+# ==================== Word CRUD Operations ====================
+
+async def get_scheduled_words(db: AsyncSession, now: datetime, user_id: int) -> List[Word]:
+    """Get words that are scheduled for practice for a specific user."""
     result = await db.execute(
         select(Word)
-        .where(Word.next_practice <= now)
-        .order_by(Word.interval.asc())
+        .join(Progress, Word.id == Progress.word_id)
+        .where(Progress.user_id == user_id)
+        .where(Progress.next_practice <= now)
+        .order_by(Progress.interval.asc())
         .limit(30)
     )
     return result.scalars().all()
 
 
-async def get_new_words(db: AsyncSession, exclude_word_ids: List[int]) -> List[Word]:
-    """Get random new words that haven't been practiced yet."""
-    query = select(Word).where(Word.next_practice.is_(None))
+async def get_new_words(db: AsyncSession, user_id: int, exclude_word_ids: List[int] = None) -> List[Word]:
+    """Get random new words that the user hasn't practiced yet (no Progress record)."""
+    # Get word IDs that user already has progress for
+    progress_result = await db.execute(
+        select(Progress.word_id).where(Progress.user_id == user_id)
+    )
+    known_word_ids = [row[0] for row in progress_result.fetchall()]
     
-    if exclude_word_ids:
-        query = query.where(Word.id.not_in(exclude_word_ids))
+    query = select(Word)
+    
+    # Combine already known words with excluded IDs
+    all_excluded = list(set(known_word_ids + (exclude_word_ids or [])))
+    
+    if all_excluded:
+        query = query.where(Word.id.not_in(all_excluded))
     
     result = await db.execute(query.order_by(func.random()).limit(30))
     return result.scalars().all()
 
 
-async def get_session_words(db: AsyncSession, session_id: str = None) -> List[WordInDB]:
+async def get_session_words(db: AsyncSession, user_id: int, session_id: str = None) -> List[WordInDB]:
     """
-    Get 30 words for a session.
+    Get 30 words for a session for a specific user.
     - First, get scheduled words (next_practice <= now) ordered by interval
-    - If insufficient, fill with random new words (next_practice is None)
+    - If insufficient, fill with random new words (no Progress record)
     """
     now = datetime.utcnow()
     
-    # Get scheduled words first
-    scheduled_words = await get_scheduled_words(db, now)
+    # Get scheduled words first (user-specific)
+    scheduled_words = await get_scheduled_words(db, now, user_id)
     
     # If we don't have enough words, get new ones
     if len(scheduled_words) < 30:
@@ -51,8 +167,10 @@ async def get_session_words(db: AsyncSession, session_id: str = None) -> List[Wo
         
         new_words = await db.execute(
             select(Word)
-            .where(Word.next_practice.is_(None))
             .where(Word.id.not_in(existing_ids))
+            .where(~Word.id.in_(
+                select(Progress.word_id).where(Progress.user_id == user_id)
+            ))
             .order_by(func.random())
             .limit(needed)
         )
@@ -86,9 +204,9 @@ async def create_session_result(
     return db_result
 
 
-async def update_word_sm2(db: AsyncSession, word_id: int, quality_rating: int) -> Word:
+async def update_progress_sm2(db: AsyncSession, user_id: int, word_id: int, quality_rating: int) -> Progress:
     """
-    Update word's next_practice, ease_factor, and interval based on SM-2 algorithm.
+    Update user's progress for a word using SM-2 algorithm.
     
     SM-2 Algorithm:
     - If quality_rating >= 3 (correct): increment repetitions, calculate new interval based on ease_factor
@@ -101,60 +219,62 @@ async def update_word_sm2(db: AsyncSession, word_id: int, quality_rating: int) -
     - 3: correct with difficulty
     - 2-0: incorrect responses
     """
-    result = await db.execute(select(Word).where(Word.id == word_id))
-    word = result.scalar_one_or_none()
-    
-    if not word:
-        return None
-    
+    progress = await get_or_create_progress(db, user_id, word_id)
     now = datetime.utcnow()
     
     # Update ease factor based on quality rating
     # Formula: new_ef = ef + (0.1 - (5 - quality) * (0.08 + (5 - quality) * 0.02))
-    new_ef = word.ease_factor + (0.1 - (5 - quality_rating) * (0.08 + (5 - quality_rating) * 0.02))
-    word.ease_factor = max(1.3, new_ef)  # Ensure ease factor doesn't go below 1.3
+    new_ef = progress.ease_factor + (0.1 - (5 - quality_rating) * (0.08 + (5 - quality_rating) * 0.02))
+    progress.ease_factor = max(1.3, new_ef)  # Ensure ease factor doesn't go below 1.3
     
     if quality_rating >= 3:
         # Correct response (quality 3-5) - increment repetitions and calculate interval
-        word.repetitions += 1
+        progress.repetitions += 1
         
-        if word.repetitions == 1:
-            word.interval = 1
-        elif word.repetitions == 2:
-            word.interval = 6
+        if progress.repetitions == 1:
+            progress.interval = 1
+        elif progress.repetitions == 2:
+            progress.interval = 6
         else:
             # Subsequent repetitions: multiply previous interval by ease factor
-            word.interval = int(word.interval * word.ease_factor)
+            progress.interval = int(progress.interval * progress.ease_factor)
     else:
         # Incorrect response (quality 0-2) - reset repetitions and interval
-        word.repetitions = 0
-        word.interval = 1  # SM-2 spec: incorrect answers should be scheduled for 1 day later
+        progress.repetitions = 0
+        progress.interval = 1  # SM-2 spec: incorrect answers should be scheduled for 1 day later
     
-    # Set next_practice based on calculated interval
-    word.next_practice = now + timedelta(days=word.interval)
+    # Set next_practice and next_review based on calculated interval
+    progress.next_practice = now + timedelta(days=progress.interval)
+    progress.next_review = progress.next_practice  # Alias for spaced repetition terminology
     
-    db.add(word)
+    db.add(progress)
     await db.commit()
-    await db.refresh(word)
-    return word
+    await db.refresh(progress)
+    return progress
 
 
-async def create_session_and_get_words(db: AsyncSession) -> tuple[str, List[WordInDB]]:
-    """Create a new session and return session_id with 30 words."""
+async def create_session_and_get_words(db: AsyncSession, user_id: int) -> tuple[str, List[WordInDB]]:
+    """Create a new session and return session_id with 30 words for a specific user."""
     session_id = str(uuid.uuid4())
-    words = await get_session_words(db)
+    words = await get_session_words(db, user_id)
     return session_id, words
 
 
 async def process_session_results(
     db: AsyncSession, 
     session_id: str, 
+    user_id: int,
     results: List[WordResult]
-) -> int:
+) -> tuple[int, List[int], Optional[List[WordInDB]]]:
     """
-    Process session results - create records and update word SM-2 values.
-    Returns the number of words practiced.
+    Process session results - create records and update user's word progress (SM-2).
+    Returns a tuple of (words_practiced, retry_words, retry_words_details) where retry_words contains
+    word_ids that should be immediately retried (quality_rating < 3), and retry_words_details
+    contains the full WordInDB objects for those words.
     """
+    retry_words: List[int] = []
+    retry_words_details: List[WordInDB] = []
+    
     for result in results:
         # Create session result record
         await create_session_result(
@@ -166,11 +286,23 @@ async def process_session_results(
             response_time_ms=result.response_time_ms
         )
         
-        # Update word's SM-2 values
-        await update_word_sm2(
+        # Track words that need immediate retry (quality_rating < 3 means incorrect)
+        if result.quality_rating < 3:
+            retry_words.append(result.word_id)
+        
+        # Update user's progress SM-2 values for this word
+        await update_progress_sm2(
             db=db,
+            user_id=user_id,
             word_id=result.word_id,
             quality_rating=result.quality_rating
         )
     
-    return len(results)
+    # Fetch full word details for retry_words
+    if retry_words:
+        words_result = await db.execute(
+            select(Word).where(Word.id.in_(retry_words))
+        )
+        retry_words_details = [WordInDB.model_validate(word) for word in words_result.scalars().all()]
+    
+    return len(results), retry_words, retry_words_details if retry_words_details else None
